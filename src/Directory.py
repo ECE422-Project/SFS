@@ -1,21 +1,23 @@
+import Component
+import File
 
-class Directory:
+class Directory(Component):
 
-    def __init__(self, name, owner):
+    def __init__(self, name, root, owner):
         self.name = name
+        self.root = root
         self.owner = owner
         self.files = []
 
-
-    def getFiles(self):
+    def get_files(self):
         return self.files
 
-    def addFile(self, file):
+    def add_file(self, file: File):
         self.files.append(file)
 
-    def setOwner(self, owner):
+    def set_owner(self, owner):
         self.owner = owner
 
-    def showFiles(self):
+    def show_files(self):
         for file in self.files:
             print(file)
