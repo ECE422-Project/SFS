@@ -7,12 +7,12 @@ from src.File import File
 class FileSystem:
 
     def __init__(self, root: Directory, user):
-        self.root = root # the root directory
-        self.user = user # the user that is currently logged in
+        self.root = root  # the root directory
+        self.user = user  # the user that is currently logged in
         self.path = [root.name]
         self.pwd = [root]  # list that keeps track of the current working directory and the immediate previous
         # directory
-        self.directory_list = {} # dictionary that keeps track of all the directories
+        self.directory_list = {}  # dictionary that keeps track of all the directories
 
     '''
     Return the list containing the string form of the current path
@@ -36,9 +36,9 @@ class FileSystem:
         return self.pwd[-1]
 
     def change_directory(self, directory_name: str):
+        # update the path to the new directory, still needs work
         self.path.append(directory_name)
         self.pwd.append(self.directory_list[directory_name])
-
 
     def change_prev_directory(self):
         self.path.pop()
@@ -50,12 +50,32 @@ class FileSystem:
     -- We can change this later if structuring things like this gets confusing
     '''
 
+    def list_components(self):
+        for component in self.get_pwd().get_files():
+            print(component.name)
+
     def create_component(self, name, compType: ComponentType, user):
-        # if the component type is a directory, then we add it as an empty list in the dictionary
+        # if the component type is a file, then create a new file object and add it to the current directory's list of
+        # components
         if compType == ComponentType.FILE:
             file = File(name, self.get_pwd(), self.user)
             self.get_pwd().add_component(file)
+        # if the component type is a directory, then create a new directory object and add it to the current directory's
+        # list of components and also add it to the dictionary that keeps track of all the directories
         else:
             directory = Directory(name, self.get_pwd(), self.user)
             self.get_pwd().add_component(directory)
             self.directory_list[name] = directory
+
+    def get_permissions(self, component):
+        return self.user.permissions[component]
+
+    def get_groups(self):
+        return self.user.groups
+
+    def read_file(self, file: File):
+        for item in self.get_pwd().get_files():
+            if item.name == file.name and self.get_permissions(file) == "r":
+                return file.read()
+        return None
+
