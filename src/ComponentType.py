@@ -1,6 +1,3 @@
-from enum import Enum
-
-
-class ComponentType(Enum):
+class ComponentType():
     DIR = "Directory"
     FILE = "File"

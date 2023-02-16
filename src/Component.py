@@ -1,4 +1,5 @@
 from src import User
+from src import AccessRight
 
 
 class Component:
@@ -10,5 +11,5 @@ class Component:
     def set_owner(self, owner):
         self.owner = owner
 
-    def set_permission(self, user, permission
-        user.add_permission(self, permission)
+    def get_owner(self):
+        return self.owner

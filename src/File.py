@@ -8,3 +8,9 @@ class File(Component):
         self.name = name
         self.directory = directory
         self.owner = owner
+
+    def read(self):
+        pass
+
+    def write(self):
+        pass

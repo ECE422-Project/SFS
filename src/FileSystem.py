@@ -1,12 +1,16 @@
 from enum import Enum
+
+from src.Component import Component
 from src.ComponentType import ComponentType
 from src.Directory import Directory
 from src.File import File
+from src.AccessRight import PermissionType
+from src.User import User
 
 
 class FileSystem:
 
-    def __init__(self, root: Directory, user):
+    def __init__(self, root: Directory, user: User):
         self.root = root  # the root directory
         self.user = user  # the user that is currently logged in
         self.path = [root.name]
@@ -67,8 +71,15 @@ class FileSystem:
             self.get_pwd().add_component(directory)
             self.directory_list[name] = directory
 
-    def get_permissions(self, component):
-        return self.user.permissions[component]
+    def get_component(self, name):
+        if name in self.directory_list:
+            return self.directory_list[name]
+        elif name in self.get_pwd().get_files():
+            return self.get_pwd().get_files().index(name)
+
+    def check_permission_type(self, component: Component):
+        if component.name in self.user.permissions:
+            return self.user.permissions[component.name]
 
     def get_groups(self):
         return self.user.groups

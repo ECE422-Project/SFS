@@ -1,11 +1,11 @@
 from src import Component
+from src.AccessRight import PermissionType
 
 
 class User:
 
-    def __init__(self, name, password):
+    def __init__(self, name):
         self.name = name
-        self.password = password
         self.groups = []
         self.permissions = {}
 
@@ -14,7 +14,4 @@ class User:
 
     def remove_group(self, group):
         self.groups.remove(group)
-
-    def add_permission(self, component: Component, permission):
-        self.permissions[component] = permission
 
