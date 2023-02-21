@@ -53,7 +53,6 @@ class FileSystem:
     keeps track of what is containing in various directories
     -- We can change this later if structuring things like this gets confusing
     '''
-
     def list_components(self):
         for component in self.get_pwd().get_files():
             print(component.name)
@@ -77,16 +76,5 @@ class FileSystem:
         elif name in self.get_pwd().get_files():
             return self.get_pwd().get_files().index(name)
 
-    def check_permission_type(self, component: Component):
-        if component.name in self.user.permissions:
-            return self.user.permissions[component.name]
-
     def get_groups(self):
         return self.user.groups
-
-    def read_file(self, file: File):
-        for item in self.get_pwd().get_files():
-            if item.name == file.name and self.get_permissions(file) == "r":
-                return file.read()
-        return None
-

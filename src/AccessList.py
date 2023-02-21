@@ -1,5 +1,6 @@
 from src import AccessRight
 from src.AccessRight import *
+from graphviz import Digraph
 
 
 class AccessList:
@@ -15,3 +16,5 @@ class AccessList:
     def check_access(self, username: str, component: str, permission: PermissionType):
         access = AccessRight(component, permission)
         return self.accessMap.__contains__(username) and self.accessMap[username].__contains__(access)
+
+    
