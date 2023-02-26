@@ -1,26 +1,27 @@
-from enum import Enum
-
-from src.Component import Component
-from src.ComponentType import ComponentType
-from src.Directory import Directory
-from src.File import File
-from src.AccessRight import PermissionType
-from src.User import User
+from ComponentType import ComponentType
+from Directory import Directory
+from File import File
+from User import User
 
 
 class FileSystem:
 
-    def __init__(self, root: Directory, user: User):
-        self.root = root  # the root directory
-        self.user = user  # the user that is currently logged in
-        self.path = [root.name]
-        self.pwd = [root]  # list that keeps track of the current working directory and the immediate previous
+    def __init__(self):
+        self.user = None  # the user that is currently logged in
+        self.path = ["/"]
+        self.pwd = []  # list that keeps track of the current working directory and the immediate previous
         # directory
         self.directory_list = {}  # dictionary that keeps track of all the directories
 
     '''
     Return the list containing the string form of the current path
     '''
+
+    def create_user(self, name):
+        self.user = User(name)
+
+    def make_current_user(self, user):
+        self.user = user
 
     def get_current_path(self):
         return self.path

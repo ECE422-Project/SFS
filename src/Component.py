@@ -1,5 +1,4 @@
-from src import User
-from src import AccessRight
+import User
 
 
 class Component:

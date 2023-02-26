@@ -1,5 +1,5 @@
-from src.Component import Component
-from src.User import User
+from Component import Component
+from User import User
 
 
 class Directory(Component):

@@ -1,6 +1,6 @@
-from src.Component import Component
-from src.Directory import Directory
-from src.User import User
+from Component import Component
+from Directory import Directory
+from User import User
 import uuid
 
 

@@ -1,6 +1,4 @@
-from src import AccessRight
-from src.AccessRight import *
-from graphviz import Digraph
+from AccessRight import *
 
 
 class AccessList:
