@@ -14,6 +14,7 @@ validCommands = ["lg", "ls", "cr", "rm", "rd", "wr", "rn"]
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
+        s.settimeout(None)
         main_menu(s)
 
 
@@ -52,6 +53,7 @@ def login(s):
         s.sendall(loginCredentials)
 
         loginCheck = s.recv(buffsize)
+
         loggedIn = pickle.loads(loginCheck)
         if loggedIn:
             print("Log in successful")
@@ -109,16 +111,38 @@ def signup(s):
 
 
 def command(s):
-    userInput = input("Enter commands:")
-    if userInput == "lg":
-        login(s)
-    elif userInput == "ls":
-        s.send(pickle.dumps(["ls", " "]))
-    elif (len(userInput) > 3) and (userInput[:2] in validCommands) and (userInput[2] == " ") and (
-            not userInput[3:].isspace()):
-        s.send(pickle.dumps([userInput[:2], userInput[3:]]))
-    else:
-        print("Invalid Input")
+    while True:
+        userInput = input("Enter commands:")
+        if len(userInput.split()) == 1:
+            if userInput == "lg":
+                main_menu(s)
+            elif userInput == "ls":
+                s.send(pickle.dumps([userInput]))
+                print(*pickle.loads(s.recv(buffsize)))
+            elif userInput == "pwd":
+                s.send(pickle.dumps([userInput]))
+                response = pickle.loads(s.recv(buffsize))
+                print(*response)
+            elif userInput == "..":
+                s.send(pickle.dumps([userInput]))
+                print(pickle.loads(s.recv(buffsize)))
+        else:
+            userInput = userInput.split()
+            if userInput[0] == "cr":
+                s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                print(pickle.loads(s.recv(buffsize)))
+            elif userInput[0] == "mk":
+                s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                print(pickle.loads(s.recv(buffsize)))
+            elif userInput[0] == "cd":
+                s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                print("Now in directory: ")
+                print(*pickle.loads(s.recv(buffsize)))
+            elif (len(userInput.split()) > 3) and (userInput.split()[:2] in validCommands) and (userInput.split()[2] == " ") and (
+                    not userInput[3:].isspace()):
+                s.send(pickle.dumps([userInput[:2], userInput[3:]]))
+            else:
+                print("Invalid Input")
 
 
 if __name__ == '__main__':

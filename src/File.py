@@ -10,10 +10,10 @@ class File(Component):
         self.name = name
         self.directory = directory
         self.owner = owner
-        self.uuid = uuid.uuid4()
+        self.content = ""
 
     def read(self):
-        pass
+        return self.content
 
     def write(self):
-        pass
+        self.content = input("Enter file content: ")

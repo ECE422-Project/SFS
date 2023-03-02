@@ -1,3 +1,3 @@
-class ComponentType():
+class ComponentType:
     DIR = "Directory"
     FILE = "File"

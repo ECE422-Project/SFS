@@ -1,7 +1,5 @@
 # Base server code obtained from https://realpython.com/python-sockets/
 
-import sys
-import os
 import socket
 import threading
 
@@ -10,16 +8,14 @@ import selectors
 import types
 import pickle
 import FileSystem
+from src.ComponentType import ComponentType
 
 host = "127.0.0.1"
 port = 8080
 buffsize = 102400  # Received .txt files + header must be smaller than 10KB
-client = pymongo.MongoClient("mongodb://localhost:27017/")
-db = client["sfsdatabase"]
-
-# Get the collection of users
-users = db["users"]
-
+users = None
+db = None
+client = None
 
 # Function to create a new user
 def create_user(signup_credentials):
@@ -36,47 +32,18 @@ def create_user(signup_credentials):
 # Function to authenticate a user
 def authenticate_user(login_credentials):
     user = users.find_one({"username": login_credentials[0], "password": login_credentials[1]})
+    print(f"found user {user}")
     if user is not None:
         return True
     else:
         return False
 
 
-def createFile(fileName):
-    # Creates a file with the specified filename in the current directory
-
-    return True
-
-
-def removeFile(fileName):
-    # Remove a file with the specified filename in the current directory
-    return True
-
-
-def readFile(fileName):
-    # Reads a file with the specified filename in the current directory
-    return True
-
-
-def writeFile(fileName):
-    # Writes to a file with the specified filename in the current directory
-    return True
-
-
-def renameFile(fileName):
-    # Renames a file with the specified filename in the current directory
-    return True
-
-
-def listDirectory():
-    # Returns a list of all filenames in the current directory
-    return True
-
-
 def handle_client(conn, addr):
+    # Initialise the file system so that it's the same for all users
+    sys = FileSystem.FileSystem(client)
     while True:
         recv = conn.recv(1024)
-        print(f"Received: {recv}")
         if not recv:
             break
         recv = pickle.loads(recv)
@@ -85,25 +52,40 @@ def handle_client(conn, addr):
             recv_data = conn.recv(buffsize)
             # loginCredentials is in the form of [username, hashedPassword]
             loggedIn = authenticate_user(pickle.loads(recv_data))
-            conn.sendall(pickle.dumps(loggedIn))
-            command_server(conn, addr)
+            send_data(conn, loggedIn)
+            if not loggedIn:
+                continue
+            sys.make_current_user(pickle.loads(recv_data)[0])
+            print(f"Logged in as {sys.user.name}, going to command server")
+            command_server(conn=conn, sys=sys)
         elif recv == "signup":
             # Receive signup information from client and check that it's valid
             recv_data = conn.recv(buffsize)
             # signupCredentials is in the form of [username, hashedPassword]
             signupSuccess = create_user(pickle.loads(recv_data))
             conn.sendall(pickle.dumps(signupSuccess))
+            sys.create_user(pickle.loads(recv_data)[0])
         elif not recv:
-            break
+            continue
 
 
 def server():
+    global users, db, client
+    client = pymongo.MongoClient("mongodb://localhost:27017/")
+    db = client["sfsdatabase"]
+
+    # Get the collection of users
+    users = db["users"]
+    # print("Starting database")
+    # cursor = users.find({})
+    # for item in cursor:
+    #     print(item)
+    # Create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
-
+    server_socket.settimeout(None)
     # Start listening for incoming connections
     server_socket.listen()
-
     print(f"Server listening on {host}:{port}")
 
     # Handle incoming connections
@@ -113,33 +95,61 @@ def server():
         client_thread.start()
 
 
-def command_server(conn, addr):
+def send_data(s, data):
+    try:
+        s.sendall(pickle.dumps(data))
+        print("Sent: ", data)
+        return
+    except:
+        # recreate the socket and reconnect
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((host, port))
+        s.sendall(pickle.dumps(data))
+        print("Sent: ", data)
+        return
+
+
+
+def command_server(conn, sys):
     while True:
         # Once login is successful, await commands (e.g change directory, add file, etc)
         # Commands arrive in the form of [command, parameters]
-        sys = FileSystem.FileSystem()
-
         recv_data = conn.recv(buffsize)
         data = pickle.loads(recv_data)
+        print(f"Received: {data}")
         # create a file
         if data[0] == "cr":
-            sys.create_component(data[1])
+            sys.create_component(str(data[1]), ComponentType.FILE)
+        elif data[0] == "cd":
+            if ".." in data[1]:
+                sys.change_prev_directory()
+                send_data(s=conn, data=sys.get_current_path())
+            else:
+                sys.change_directory(str(data[1]))
+                send_data(s=conn, data=sys.get_current_path())
+        elif data[0] == "mk":
+            sys.create_component(str(data[1]), ComponentType.DIR)
+            send_data(conn, "Directory created")
         # remove a file
         elif data[0] == "rm":
-            removeFile(data[1])
+            # removeFile(data[1])
+            pass
         # read a file
         elif data[0] == "rd":
-            file = readFile(data[1])
-            conn.sendall(file)
+            # file = readFile(data[1])
+            #send_data(file)
+            pass
         elif data[0] == "wr":
-            writeFile(data[1])
+            # writeFile(data[1])
+            pass
         elif data[0] == "rn":
-            renameFile(data[1])
+            # renameFile(data[1])
+            pass
         # list all files in the directory
         elif data[0] == "ls":
-            sys.list_components()
-            directoryList = listDirectory()
-            conn.sendall(directoryList)
+            send_data(conn, sys.list_components())
+        elif data[0] == "pwd":
+            send_data(s=conn, data=sys.get_current_path())
 
 
 if __name__ == '__main__':

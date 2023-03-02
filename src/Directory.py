@@ -4,9 +4,8 @@ from User import User
 
 class Directory(Component):
 
-    def __init__(self, name, root, owner: User):
+    def __init__(self, name, owner: User):
         self.name = name
-        self.root = root
         self.owner = owner
         self.components = []
 
