@@ -11,6 +11,7 @@ class File(Component):
         self.directory = directory
         self.owner = owner
         self.content = ""
+        self.last_edited_by = owner.name
 
     def __eq__(self, other):
         return self.name == other.name and self.directory == other.directory and self.owner == other.owner
@@ -24,3 +25,4 @@ class File(Component):
                 self.content += word
             else:
                 self.content += word + " "
+        self.last_edited_by = self.owner.name

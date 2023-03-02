@@ -16,6 +16,8 @@ buffsize = 102400  # Received .txt files + header must be smaller than 10KB
 users = None
 db = None
 client = None
+filesystems = None
+
 
 # Function to create a new user
 def create_user(signup_credentials):
@@ -40,21 +42,32 @@ def authenticate_user(login_credentials):
 
 def handle_client(conn, addr):
     # Initialise the file system so that it's the same for all users
-    sys = FileSystem.FileSystem(client)
+
     while True:
         recv = conn.recv(1024)
         if not recv:
             break
         recv = pickle.loads(recv)
-        print(f'Received: {recv}')
+        print(f'Command received: {recv}')
         if recv == "login":
             recv_data = conn.recv(buffsize)
+            print(f'Data received: {recv_data}')
             # loginCredentials is in the form of [username, hashedPassword]
             loggedIn = authenticate_user(pickle.loads(recv_data))
             send_data(conn, loggedIn)
             if not loggedIn:
                 continue
-            sys.make_current_user(pickle.loads(recv_data)[0])
+            client_username = pickle.loads(recv_data)[0]
+            fs = filesystems.find_one({"username": client_username})
+            # print(f"fs is {fs}")
+            if fs is None:
+                sys = FileSystem.FileSystem(client)
+                sys.make_current_user(client_username)
+            else:
+                sys = pickle.loads(fs["filesystem"])
+            # cursor = filesystems.find({})
+            # for item in cursor:
+            #     print(item)
             print(f"Logged in as {sys.user.name}, going to command server")
             command_server(conn=conn, sys=sys)
         elif recv == "signup":
@@ -69,12 +82,14 @@ def handle_client(conn, addr):
 
 
 def server():
-    global users, db, client
+    global users, db, client, filesystems
     client = pymongo.MongoClient("mongodb://localhost:27017/")
     db = client["sfsdatabase"]
 
     # Get the collection of users
     users = db["users"]
+    filesystems = db["filesystems"]
+    #filesystems.delete_many({})
     # print("Starting database")
     # cursor = users.find({})
     # for item in cursor:
@@ -108,6 +123,13 @@ def send_data(s, data):
         return
 
 
+def save_system(sys):
+    # Save the file system to the database
+    if filesystems.find_one({"username": sys.user.name}) is not None:
+        filesystems.delete_one({"username": sys.user.name})
+    result = filesystems.insert_one({"username": sys.user.name, "filesystem": pickle.dumps(sys)})
+    print("Saved system")
+
 
 def command_server(conn, sys):
     while True:
@@ -115,7 +137,7 @@ def command_server(conn, sys):
         # Commands arrive in the form of [command, parameters]
         recv_data = conn.recv(buffsize)
         data = pickle.loads(recv_data)
-        print(f"Received: {data}")
+        print(f"Received in command server: {data}")
         # create a file
         if data[0] == "cr":
             sys.create_component(str(data[1]), ComponentType.FILE)
@@ -135,6 +157,9 @@ def command_server(conn, sys):
             # removeFile(data[1])
             pass
         # read a file
+        elif data[0] == "lg":
+            save_system(sys)
+            handle_client(conn, None)
         elif data[0] == "rd":
             file = sys.get_component(str(data[1])).read()
             send_data(conn, str(file))

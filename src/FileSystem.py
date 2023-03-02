@@ -24,9 +24,6 @@ class FileSystem:
     def create_user(self, name):
         self.user = User(name)
         self.users.append(self.user)
-        # db = self.client["users"]
-        # collection = db["users"]
-        # collection.create_user(self.user)
 
     def make_current_user(self, name):
         for user in self.users:

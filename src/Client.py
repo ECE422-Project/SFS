@@ -115,6 +115,7 @@ def command(s):
         userInput = input("Enter commands:")
         if len(userInput.split()) == 1:
             if userInput == "lg":
+                s.send(pickle.dumps([userInput]))
                 main_menu(s)
             elif userInput == "ls":
                 s.send(pickle.dumps([userInput]))
