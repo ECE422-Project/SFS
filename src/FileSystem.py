@@ -47,6 +47,7 @@ class FileSystem:
     '''
 
     def get_pwd(self):
+        print(isinstance(self.pwd, list))
         return self.pwd[len(self.pwd) - 1]
 
     def change_directory(self, directory_name: str):
@@ -56,7 +57,7 @@ class FileSystem:
 
     def change_prev_directory(self):
         self.path.pop()
-        self.pwd = self.pwd.pop()
+        self.pwd.pop()
 
     '''
     Creates a new component (so either a file or directory) and then adds it to the dictionary that
@@ -67,7 +68,6 @@ class FileSystem:
     def list_components(self):
         li = []
         for component in self.get_pwd().get_files():
-
             li.append(component.name)
         return li
 

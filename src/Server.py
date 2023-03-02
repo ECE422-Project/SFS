@@ -42,7 +42,7 @@ def authenticate_user(login_credentials):
 
 def handle_client(conn, addr):
     # Initialise the file system so that it's the same for all users
-
+    signup_sys = FileSystem.FileSystem(client)
     while True:
         recv = conn.recv(1024)
         if not recv:
@@ -65,9 +65,6 @@ def handle_client(conn, addr):
                 sys.make_current_user(client_username)
             else:
                 sys = pickle.loads(fs["filesystem"])
-            # cursor = filesystems.find({})
-            # for item in cursor:
-            #     print(item)
             print(f"Logged in as {sys.user.name}, going to command server")
             command_server(conn=conn, sys=sys)
         elif recv == "signup":
@@ -76,7 +73,7 @@ def handle_client(conn, addr):
             # signupCredentials is in the form of [username, hashedPassword]
             signupSuccess = create_user(pickle.loads(recv_data))
             conn.sendall(pickle.dumps(signupSuccess))
-            sys.create_user(pickle.loads(recv_data)[0])
+            signup_sys.create_user(pickle.loads(recv_data)[0])
         elif not recv:
             continue
 
@@ -89,7 +86,8 @@ def server():
     # Get the collection of users
     users = db["users"]
     filesystems = db["filesystems"]
-    #filesystems.delete_many({})
+    # filesystems.delete_many({})
+    # users.delete_many({})
     # print("Starting database")
     # cursor = users.find({})
     # for item in cursor:
