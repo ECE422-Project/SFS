@@ -2,6 +2,7 @@ from ComponentType import ComponentType
 from Directory import Directory
 from File import File
 from User import User
+from src.AccessRight import PermissionType
 
 
 class FileSystem:
@@ -23,6 +24,9 @@ class FileSystem:
     def create_user(self, name):
         self.user = User(name)
         self.users.append(self.user)
+        # db = self.client["users"]
+        # collection = db["users"]
+        # collection.create_user(self.user)
 
     def make_current_user(self, name):
         for user in self.users:
@@ -66,6 +70,7 @@ class FileSystem:
     def list_components(self):
         li = []
         for component in self.get_pwd().get_files():
+
             li.append(component.name)
         return li
 
@@ -75,6 +80,7 @@ class FileSystem:
         if compType == ComponentType.FILE:
             file = File(name, self.get_pwd(), self.user)
             self.get_pwd().add_component(file)
+            self.user.permissions[file.name] = PermissionType.READWRITE
             return file
         # if the component type is a directory, then create a new directory object and add it to the current directory's
         # list of components and also add it to the dictionary that keeps track of all the directories
@@ -82,6 +88,7 @@ class FileSystem:
             directory = Directory(name, self.get_pwd())
             self.get_pwd().add_component(directory)
             self.directory_list[name] = directory
+            self.user.permissions[directory.name] = PermissionType.READWRITE
             return directory
 
     def remove_component(self, name):
@@ -100,10 +107,11 @@ class FileSystem:
     def get_component(self, name):
         if name in self.directory_list:
             return self.directory_list[name]
-        elif name in self.get_pwd().get_files():
-            for file in self.get_pwd().get_files():
-                if file.name == name:
-                    return file
+        else:
+            for directory in self.directory_list:
+                for file in self.directory_list[directory].get_files():
+                    if name in file.name:
+                        return file
 
     def get_groups(self):
         return self.user.groups

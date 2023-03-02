@@ -32,7 +32,6 @@ def create_user(signup_credentials):
 # Function to authenticate a user
 def authenticate_user(login_credentials):
     user = users.find_one({"username": login_credentials[0], "password": login_credentials[1]})
-    print(f"found user {user}")
     if user is not None:
         return True
     else:
@@ -120,6 +119,7 @@ def command_server(conn, sys):
         # create a file
         if data[0] == "cr":
             sys.create_component(str(data[1]), ComponentType.FILE)
+            send_data(conn, "File created")
         elif data[0] == "cd":
             if ".." in data[1]:
                 sys.change_prev_directory()
@@ -136,11 +136,11 @@ def command_server(conn, sys):
             pass
         # read a file
         elif data[0] == "rd":
-            # file = readFile(data[1])
-            #send_data(file)
+            file = sys.get_component(str(data[1])).read()
+            send_data(conn, str(file))
             pass
         elif data[0] == "wr":
-            # writeFile(data[1])
+            sys.get_component(str(data[1][0])).write(data[1][1:])
             pass
         elif data[0] == "rn":
             # renameFile(data[1])

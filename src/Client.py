@@ -129,15 +129,23 @@ def command(s):
         else:
             userInput = userInput.split()
             if userInput[0] == "cr":
-                s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                s.send(pickle.dumps([userInput[0], *userInput[1:]]))
                 print(pickle.loads(s.recv(buffsize)))
             elif userInput[0] == "mk":
-                s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                s.send(pickle.dumps([userInput[0], *userInput[1:]]))
                 print(pickle.loads(s.recv(buffsize)))
             elif userInput[0] == "cd":
-                s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                s.send(pickle.dumps([userInput[0], *userInput[1:]]))
                 print("Now in directory: ")
                 print(*pickle.loads(s.recv(buffsize)))
+            elif userInput[0] == "rm":
+                s.send(pickle.dumps([userInput[0], *userInput[1:]]))
+                print(pickle.loads(s.recv(buffsize)))
+            elif userInput[0] == "rd":
+                s.send(pickle.dumps([userInput[0], *userInput[1:]]))
+                print(pickle.loads(s.recv(buffsize)))
+            elif userInput[0] == "wr":
+                s.send(pickle.dumps([userInput[0], userInput[1:]]))
             elif (len(userInput.split()) > 3) and (userInput.split()[:2] in validCommands) and (userInput.split()[2] == " ") and (
                     not userInput[3:].isspace()):
                 s.send(pickle.dumps([userInput[:2], userInput[3:]]))

@@ -12,8 +12,15 @@ class File(Component):
         self.owner = owner
         self.content = ""
 
+    def __eq__(self, other):
+        return self.name == other.name and self.directory == other.directory and self.owner == other.owner
+
     def read(self):
         return self.content
 
-    def write(self):
-        self.content = input("Enter file content: ")
+    def write(self, content):
+        for word in content:
+            if content.index(word) == len(content) - 1:
+                self.content += word
+            else:
+                self.content += word + " "
