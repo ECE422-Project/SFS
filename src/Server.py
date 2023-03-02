@@ -4,11 +4,9 @@ import socket
 import threading
 
 import pymongo
-import selectors
-import types
 import pickle
 import FileSystem
-from src.ComponentType import ComponentType
+from ComponentType import ComponentType
 
 host = "127.0.0.1"
 port = 8080
@@ -17,6 +15,8 @@ users = None
 db = None
 client = None
 filesystems = None
+groups = None
+close = False
 
 
 # Function to create a new user
@@ -41,6 +41,7 @@ def authenticate_user(login_credentials):
 
 
 def handle_client(conn, addr):
+    global close
     # Initialise the file system so that it's the same for all users
     signup_sys = FileSystem.FileSystem(client)
     while True:
@@ -65,8 +66,13 @@ def handle_client(conn, addr):
                 sys.make_current_user(client_username)
             else:
                 sys = pickle.loads(fs["filesystem"])
+            add_to_groups(sys)
             print(f"Logged in as {sys.user.name}, going to command server")
-            command_server(conn=conn, sys=sys)
+            # If the user is an admin, go to the admin command server
+            if sys.user.name == "admin":
+                command_server(conn=conn, sys=sys, admin=True)
+            else:
+                command_server(conn=conn, sys=sys, admin=False)
         elif recv == "signup":
             # Receive signup information from client and check that it's valid
             recv_data = conn.recv(buffsize)
@@ -74,22 +80,28 @@ def handle_client(conn, addr):
             signupSuccess = create_user(pickle.loads(recv_data))
             conn.sendall(pickle.dumps(signupSuccess))
             signup_sys.create_user(pickle.loads(recv_data)[0])
+        elif recv == "exit":
+            conn.close()
+            close = True
+            break
         elif not recv:
             continue
 
 
 def server():
-    global users, db, client, filesystems
+    global users, db, client, filesystems, groups
     client = pymongo.MongoClient("mongodb://localhost:27017/")
     db = client["sfsdatabase"]
 
     # Get the collection of users
     users = db["users"]
     filesystems = db["filesystems"]
+    groups = db["groups"]
     # filesystems.delete_many({})
     # users.delete_many({})
+    # groups.delete_many({})
     # print("Starting database")
-    # cursor = users.find({})
+    # cursor = filesystems.find({})
     # for item in cursor:
     #     print(item)
     # Create a socket object
@@ -101,10 +113,13 @@ def server():
     print(f"Server listening on {host}:{port}")
 
     # Handle incoming connections
-    while True:
+    while not close:
         conn, addr = server_socket.accept()
         client_thread = threading.Thread(target=handle_client, args=(conn, addr))
         client_thread.start()
+        client_thread.join()
+    server_socket.close()
+    exit()
 
 
 def send_data(s, data):
@@ -129,7 +144,44 @@ def save_system(sys):
     print("Saved system")
 
 
-def command_server(conn, sys):
+def create_group(group_name, usernames):
+    global users, groups
+    # check if group already exists
+    if groups.find_one({"groupname": group_name}) is not None:
+        return False
+    # check if all users exist
+    for user in usernames:
+        if users.find_one({"username": user}) is None:
+            return False
+    # create group
+    groups.insert_one({"groupname": group_name, "users": usernames})
+    return True
+
+
+def update_group(group_name, usernames):
+    if groups.find_one({"groupname": group_name}) is None:
+        return False
+    groups.delete_one({"groupname": group_name})
+    groups.insert_one({"groupname": group_name, "users": usernames})
+
+
+def delete_group(group_name):
+    if groups.find_one({"groupname": group_name}) is None:
+        return False
+    groups.delete_one({"groupname": group_name})
+    return True
+
+
+def add_to_groups(sys):
+    # cursor = users.find({})
+    # for item in cursor:
+    #     print(item)
+    cursor = groups.find({"users": sys.user.name})
+    for item in cursor:
+        sys.user.add_group(item["groupname"])
+
+
+def command_server(conn, sys, admin=False):
     while True:
         # Once login is successful, await commands (e.g change directory, add file, etc)
         # Commands arrive in the form of [command, parameters]
@@ -152,27 +204,52 @@ def command_server(conn, sys):
             send_data(conn, "Directory created")
         # remove a file
         elif data[0] == "rm":
-            # removeFile(data[1])
-            pass
+            sys.remove_component(str(data[1]))
+            send_data(conn, f"{str(data[1])} deleted")
         # read a file
         elif data[0] == "lg":
             save_system(sys)
-            handle_client(conn, None)
+            return
         elif data[0] == "rd":
             file = sys.get_component(str(data[1])).read()
             send_data(conn, str(file))
-            pass
         elif data[0] == "wr":
             sys.get_component(str(data[1][0])).write(data[1][1:])
-            pass
         elif data[0] == "rn":
-            # renameFile(data[1])
-            pass
+            sys.get_component(str(data[1][0])).rename(data[1][1])
+            send_data(conn, f"File renamed to {str(data[1][1])}")
         # list all files in the directory
         elif data[0] == "ls":
             send_data(conn, sys.list_components())
+        elif data[0] == "shg":
+            send_data(conn, sys.user.groups)
         elif data[0] == "pwd":
             send_data(s=conn, data=sys.get_current_path())
+        # admin commands
+        elif data[0] == "crg":
+            if admin:
+                send_data(conn, create_group(data[1][0], data[1][1:]))
+            else:
+                send_data(conn, "You are not an admin")
+        elif data[0] == "dlg":
+            if admin:
+                send_data(conn, delete_group(data[1]))
+            else:
+                send_data(conn, "You are not an admin")
+        elif data[0] == "upg":
+            if admin:
+                send_data(conn, update_group(data[1], data[1:]))
+            else:
+                send_data(conn, "You are not an admin")
+        elif data[0] == "lsg":
+            if admin:
+                li = []
+                cursor = groups.find({})
+                for document in cursor:
+                    li.append([document["groupname"], document["users"]])
+                send_data(conn, li)
+            else:
+                send_data(conn, "You are not an admin")
 
 
 if __name__ == '__main__':

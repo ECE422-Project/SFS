@@ -29,7 +29,7 @@ def main_menu(s):
     elif choice == "2":
         signup(s)
     elif choice == "3":
-        exit()
+        exit_program(s)
     else:
         print("Invalid choice")
         main_menu(s)
@@ -120,6 +120,12 @@ def command(s):
             elif userInput == "ls":
                 s.send(pickle.dumps([userInput]))
                 print(*pickle.loads(s.recv(buffsize)))
+            elif userInput == "lsg":
+                s.send(pickle.dumps([userInput]))
+                print(*pickle.loads(s.recv(buffsize)))
+            elif userInput == "shg":
+                s.send(pickle.dumps([userInput]))
+                print(*pickle.loads(s.recv(buffsize)))
             elif userInput == "pwd":
                 s.send(pickle.dumps([userInput]))
                 response = pickle.loads(s.recv(buffsize))
@@ -147,11 +153,42 @@ def command(s):
                 print(pickle.loads(s.recv(buffsize)))
             elif userInput[0] == "wr":
                 s.send(pickle.dumps([userInput[0], userInput[1:]]))
-            elif (len(userInput.split()) > 3) and (userInput.split()[:2] in validCommands) and (userInput.split()[2] == " ") and (
-                    not userInput[3:].isspace()):
+            elif userInput[0] == "rn":
+                s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                print(pickle.loads(s.recv(buffsize)))
+            elif userInput[0] == "crg":
+                s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                if pickle.loads(s.recv(buffsize)):
+                    print("Group created")
+                else:
+                    print("Group already exists")
+            elif userInput[0] == "dlg":
+                s.send(pickle.dumps([userInput[0], *userInput[1:]]))
+                if pickle.loads(s.recv(buffsize)):
+                    print("Group deleted")
+                else:
+                    print("Group does not exist")
+            elif userInput[0] == "upg":
+                s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                if pickle.loads(s.recv(buffsize)):
+                    print("Group updated")
+                else:
+                    print("Group does not exist")
                 s.send(pickle.dumps([userInput[:2], userInput[3:]]))
             else:
                 print("Invalid Input")
+
+
+def exit_program(s):
+    try:
+        s.send(pickle.dumps("exit"))
+    except:
+        # recreate the socket and reconnect
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((host, port))
+        s.send(pickle.dumps("exit"))
+    s.close()
+    exit()
 
 
 if __name__ == '__main__':

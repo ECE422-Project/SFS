@@ -2,7 +2,7 @@ from ComponentType import ComponentType
 from Directory import Directory
 from File import File
 from User import User
-from src.AccessRight import PermissionType
+from AccessRight import PermissionType
 
 
 class FileSystem:
@@ -14,7 +14,6 @@ class FileSystem:
         self.pwd = []  # list that keeps track of the current working directory and the immediate previous
         # directory
         self.directory_list = {}  # dictionary that keeps track of all the directories
-
         self.pwd.append(Directory("/", self.user))
 
     '''
@@ -91,15 +90,11 @@ class FileSystem:
     def remove_component(self, name):
         if name in self.directory_list:
             self.directory_list.pop(name)
-        elif name in self.get_pwd().get_files():
-            self.get_pwd().get_files().remove(name)
-
-    def rename_component(self, old_name, new_name):
-        if old_name in self.directory_list:
-            self.directory_list[new_name] = self.directory_list.pop(old_name)
-        elif old_name in self.get_pwd().get_files():
-            self.get_pwd().get_files().remove(old_name)
-            self.get_pwd().get_files().append(new_name)
+        else:
+            for directory in self.directory_list:
+                for file in self.directory_list[directory].get_files():
+                    if name in file.name:
+                        self.directory_list[directory].get_files().remove(file)
 
     def get_component(self, name):
         if name in self.directory_list:

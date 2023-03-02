@@ -9,6 +9,9 @@ class Directory(Component):
         self.owner = owner
         self.components = []
 
+    def rename(self, new_name):
+        self.name = new_name
+
     def get_files(self):
         return self.components
 

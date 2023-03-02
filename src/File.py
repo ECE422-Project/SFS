@@ -16,6 +16,9 @@ class File(Component):
     def __eq__(self, other):
         return self.name == other.name and self.directory == other.directory and self.owner == other.owner
 
+    def rename(self, new_name):
+        self.name = new_name
+
     def read(self):
         return self.content
 
