@@ -100,10 +100,6 @@ def server():
     # filesystems.delete_many({})
     # users.delete_many({})
     # groups.delete_many({})
-    # print("Starting database")
-    # cursor = filesystems.find({})
-    # for item in cursor:
-    #     print(item)
     # Create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
@@ -183,7 +179,7 @@ def add_to_groups(sys):
 
 def command_server(conn, sys, admin=False):
     fullPrivilege = True
-    actualUsername = sys.user.name
+    actualUsername = sys.user.name  # logged in user, seperate from filesystem owner
     while True:
         # Once login is successful, await commands (e.g change directory, add file, etc)
         # Commands arrive in the form of [command, parameters]
@@ -199,38 +195,36 @@ def command_server(conn, sys, admin=False):
                 send_data(conn, "Insufficient privileges")
         elif data[0] == "cd":
             if ".." in data[1]:
-                result = sys.change_prev_directory()
-                if result == True:
-                    send_data(s=conn, data=sys.get_current_path())
-                else:
-                    send_data(s=conn, data="Error: Invalid path provided")
-            elif "home\\" in data[1]:
-                newuser = data[1].split('\\')[1]
+                sys.change_prev_directory()
+                send_data(s=conn, data=sys.get_current_path())
+            elif "home/" in data[1]:
+                newuser = data[1].split('/')[1]
                 # if the user isn't changing to another user's directory
-                if (newuser == sys.user.name) and (newuser == actualUsername):
+                if newuser == sys.user.name and newuser == actualUsername:
                     result = sys.change_directory(str(data[1]))
-                    if result == True:
+                    if result:
                         send_data(s=conn, data=sys.get_current_path())
                     else:
                         send_data(s=conn, data="Error: Invalid path provided")
                 else:
                     newfs = filesystems.find_one({"username": newuser})
-                    newfs = pickle.loads(newfs["filesystem"])
+                    fs = pickle.loads(newfs["filesystem"])
                     inSameGroup = False
+                    add_to_groups(fs)
                     for grp in sys.user.groups:
-                        if grp in newfs.user.groups:
+                        if grp in fs.user.groups:
                             inSameGroup = True
-                    if inSameGroup:                
+                    if inSameGroup:
                         # if the user is changing back to his original directory    
                         if (newuser != sys.user.name) and (newuser == actualUsername):
                             save_system(sys)
-                            sys = newfs
+                            sys = fs
                             send_data(s=conn, data=sys.get_current_path())
                             fullPrivilege = True
                         # if the user is changing to another user's directory
                         else:
                             save_system(sys)
-                            sys = newfs
+                            sys = fs
                             send_data(s=conn, data=sys.get_current_path_lp())
                             fullPrivilege = False
                     else:
