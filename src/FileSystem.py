@@ -3,7 +3,7 @@ from Directory import Directory
 from File import File
 from User import User
 from AccessRight import PermissionType
-
+from pyDes import *
 
 class FileSystem:
 
@@ -28,8 +28,9 @@ class FileSystem:
         for user in self.users:
             if user.name == name:
                 self.user = user
-                self.create_component(self.user.home_directory, ComponentType.DIR)
+                directory = self.create_component(self.user.home_directory, ComponentType.DIR)
                 self.change_directory(self.user.home_directory)
+                print(self.directory_list)
                 return
         self.create_user(name)
         self.make_current_user(name)
@@ -39,6 +40,12 @@ class FileSystem:
     '''
 
     def get_current_path(self):
+        decryptedPath = ["/"]
+        for i in range(1, len(self.path)):
+            decryptedPath.append(triple_des('ECE422-SecurityProject01').decrypt(self.path[i], padmode=2).decode())
+        return decryptedPath
+    
+    def get_current_path_lp(self):
         return self.path
 
     '''
@@ -50,9 +57,14 @@ class FileSystem:
         return self.pwd[len(self.pwd) - 1]
 
     def change_directory(self, directory_name: str):
+        directory_name = triple_des('ECE422-SecurityProject01').encrypt(directory_name, padmode=2)
         # update the path to the new directory, still needs work
         self.path.append(directory_name)
-        self.pwd.append(self.directory_list[directory_name])
+        try:
+            self.pwd.append(self.directory_list[directory_name])
+            return True
+        except:
+            return False
 
     def change_prev_directory(self):
         self.path.pop()
@@ -67,10 +79,18 @@ class FileSystem:
     def list_components(self):
         li = []
         for component in self.get_pwd().get_files():
+            li.append(triple_des('ECE422-SecurityProject01').decrypt(component.name, padmode=2).decode())
+        return li
+    
+    def list_components_lp(self):
+        li = []
+        for component in self.get_pwd().get_files():
             li.append(component.name)
         return li
 
     def create_component(self, name, compType: ComponentType):
+        # use encrypted form of the component name 
+        name = triple_des('ECE422-SecurityProject01').encrypt(name, padmode=2)
         # if the component type is a file, then create a new file object and add it to the current directory's list of
         # components
         if compType == ComponentType.FILE:
@@ -88,6 +108,8 @@ class FileSystem:
             return directory
 
     def remove_component(self, name):
+        # use encrypted form of the component name 
+        name = triple_des('ECE422-SecurityProject01').encrypt(name, padmode=2)
         if name in self.directory_list:
             self.directory_list.pop(name)
         else:
@@ -97,6 +119,8 @@ class FileSystem:
                         self.directory_list[directory].get_files().remove(file)
 
     def get_component(self, name):
+        # use encrypted form of the component name 
+        name = triple_des('ECE422-SecurityProject01').encrypt(name, padmode=2)
         if name in self.directory_list:
             return self.directory_list[name]
         else:

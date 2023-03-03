@@ -153,6 +153,7 @@ def command(s):
                 print(pickle.loads(s.recv(buffsize)))
             elif userInput[0] == "wr":
                 s.send(pickle.dumps([userInput[0], userInput[1:]]))
+                print(pickle.loads(s.recv(buffsize)))
             elif userInput[0] == "rn":
                 s.send(pickle.dumps([userInput[0], userInput[1:]]))
                 print(pickle.loads(s.recv(buffsize)))

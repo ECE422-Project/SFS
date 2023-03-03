@@ -182,6 +182,8 @@ def add_to_groups(sys):
 
 
 def command_server(conn, sys, admin=False):
+    fullPrivilege = True
+    actualUsername = sys.user.name
     while True:
         # Once login is successful, await commands (e.g change directory, add file, etc)
         # Commands arrive in the form of [command, parameters]
@@ -190,41 +192,103 @@ def command_server(conn, sys, admin=False):
         print(f"Received in command server: {data}")
         # create a file
         if data[0] == "cr":
-            sys.create_component(str(data[1]), ComponentType.FILE)
-            send_data(conn, "File created")
+            if (fullPrivilege == True) or (admin == True):
+                sys.create_component(str(data[1]), ComponentType.FILE)
+                send_data(conn, "File created")
+            else:
+                send_data(conn, "Insufficient privileges")
         elif data[0] == "cd":
             if ".." in data[1]:
-                sys.change_prev_directory()
-                send_data(s=conn, data=sys.get_current_path())
+                result = sys.change_prev_directory()
+                if result == True:
+                    send_data(s=conn, data=sys.get_current_path())
+                else:
+                    send_data(s=conn, data="Error: Invalid path provided")
+            elif "home\\" in data[1]:
+                newuser = data[1].split('\\')[1]
+                # if the user isn't changing to another user's directory
+                if (newuser == sys.user.name) and (newuser == actualUsername):
+                    result = sys.change_directory(str(data[1]))
+                    if result == True:
+                        send_data(s=conn, data=sys.get_current_path())
+                    else:
+                        send_data(s=conn, data="Error: Invalid path provided")
+                else:
+                    newfs = filesystems.find_one({"username": newuser})
+                    newfs = pickle.loads(newfs["filesystem"])
+                    inSameGroup = False
+                    for grp in sys.user.groups:
+                        if grp in newfs.user.groups:
+                            inSameGroup = True
+                    if inSameGroup:                
+                        # if the user is changing back to his original directory    
+                        if (newuser != sys.user.name) and (newuser == actualUsername):
+                            save_system(sys)
+                            sys = newfs
+                            send_data(s=conn, data=sys.get_current_path())
+                            fullPrivilege = True
+                        # if the user is changing to another user's directory
+                        else:
+                            save_system(sys)
+                            sys = newfs
+                            send_data(s=conn, data=sys.get_current_path_lp())
+                            fullPrivilege = False
+                    else:
+                        send_data(s=conn, data="Insufficient privileges - Not in same group")
             else:
-                sys.change_directory(str(data[1]))
-                send_data(s=conn, data=sys.get_current_path())
+                result = sys.change_directory(str(data[1]))
+                if result == True:
+                    send_data(s=conn, data=sys.get_current_path())
+                else:
+                    send_data(s=conn, data="Error: Invalid path provided")
         elif data[0] == "mk":
-            sys.create_component(str(data[1]), ComponentType.DIR)
-            send_data(conn, "Directory created")
+            if (fullPrivilege == True) or (admin == True):
+                sys.create_component(str(data[1]), ComponentType.DIR)
+                send_data(conn, "Directory created")
+            else:
+                send_data(conn, "Insufficient privileges")
         # remove a file
         elif data[0] == "rm":
-            sys.remove_component(str(data[1]))
-            send_data(conn, f"{str(data[1])} deleted")
+            if (fullPrivilege == True) or (admin == True):
+                sys.remove_component(str(data[1]))
+                send_data(conn, f"{str(data[1])} deleted")
+            else:
+                send_data(conn, "Insufficient privileges")
         # read a file
         elif data[0] == "lg":
             save_system(sys)
             return
         elif data[0] == "rd":
-            file = sys.get_component(str(data[1])).read()
-            send_data(conn, str(file))
+            if (fullPrivilege == True) or (admin == True):
+                file = sys.get_component(str(data[1])).read()
+                send_data(conn, str(file))
+            else:
+                send_data(conn, "Insufficient privileges")
         elif data[0] == "wr":
-            sys.get_component(str(data[1][0])).write(data[1][1:])
+            if (fullPrivilege == True) or (admin == True):
+                sys.get_component(str(data[1][0])).write(data[1][1:])
+                send_data(conn, "File updated")
+            else:
+                send_data(conn, "Insufficient privileges")
         elif data[0] == "rn":
-            sys.get_component(str(data[1][0])).rename(data[1][1])
-            send_data(conn, f"File renamed to {str(data[1][1])}")
+            if (fullPrivilege == True) or (admin == True):
+                sys.get_component(str(data[1][0])).rename(data[1][1])
+                send_data(conn, f"File renamed to {str(data[1][1])}")
+            else:
+                send_data(conn, "Insufficient privileges")
         # list all files in the directory
         elif data[0] == "ls":
-            send_data(conn, sys.list_components())
+            if (fullPrivilege == True) or (admin == True):
+                send_data(conn, sys.list_components())
+            else:
+                send_data(conn, sys.list_components_lp())
         elif data[0] == "shg":
             send_data(conn, sys.user.groups)
         elif data[0] == "pwd":
-            send_data(s=conn, data=sys.get_current_path())
+            if (fullPrivilege == True) or (admin == True):
+                send_data(s=conn, data=sys.get_current_path())
+            else:
+                send_data(s=conn, data=sys.get_current_path_lp())
         # admin commands
         elif data[0] == "crg":
             if admin:
