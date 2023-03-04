@@ -111,6 +111,8 @@ def signup(s):
 
 
 def command(s):
+    systemState = pickle.loads(s.recv(buffsize))
+    print(systemState)
     while True:
         userInput = input("Enter commands:")
         if len(userInput.split()) == 1:
@@ -144,7 +146,7 @@ def command(s):
             elif userInput[0] == "cd":
                 s.send(pickle.dumps([userInput[0], *userInput[1:]]))
                 print("Now in directory: ")
-                print(*pickle.loads(s.recv(buffsize)))
+                print(pickle.loads(s.recv(buffsize)))
             elif userInput[0] == "rm":
                 s.send(pickle.dumps([userInput[0], *userInput[1:]]))
                 print(pickle.loads(s.recv(buffsize)))

@@ -7,6 +7,8 @@ import pymongo
 import pickle
 import FileSystem
 from ComponentType import ComponentType
+from pyDes import *
+import hashlib
 
 host = "127.0.0.1"
 port = 8080
@@ -38,6 +40,15 @@ def authenticate_user(login_credentials):
         return True
     else:
         return False
+    
+# checks the old hash to the current has of a file
+def checkHash(component, list):
+    oldHash = triple_des('ECE422-SecurityProject01').decrypt(component.hash, padmode=2).decode()
+    currentHash = hashlib.sha256(component.content).hexdigest()
+    if oldHash != currentHash:
+        list.append(component.name)
+    return list
+
 
 
 def handle_client(conn, addr):
@@ -64,8 +75,44 @@ def handle_client(conn, addr):
             if fs is None:
                 sys = FileSystem.FileSystem(client)
                 sys.make_current_user(client_username)
+                send_data(conn, "No files present")
             else:
-                sys = pickle.loads(fs["filesystem"])
+                # check if the users files/directorys are intact
+                damagedComponents = []
+                try:
+                    sys = pickle.loads(fs["filesystem"])
+                    # try to identify the exact file(s) that have been corrupted
+                    try:
+                        for component in sys.get_pwd().get_files():
+                            try:
+                                # compare file's previous hash to it's new one
+                                if component.type == "File":
+                                    damagedComponents = checkHash(component, damagedComponents)
+                                if component.type == "Directory":
+                                    for nextcom in component.components:
+                                        if nextcom.type == "File":
+                                            damagedComponents = checkHash(nextcom, damagedComponents)
+                            # there's a chance that much more of the component gets damaged than just its contents, in which case we just add the component name
+                            except:
+                                damagedComponents.append(component.name)
+                        if len(damagedComponents) > 0:
+                            integrityMessage = "File(s): "
+                            for filename in damagedComponents:
+                                decryptedFilename = triple_des('ECE422-SecurityProject01').decrypt(filename, padmode=2).decode()
+                                integrityMessage = integrityMessage + decryptedFilename + " "
+                                integrityMessage = integrityMessage + "have been corrupted"
+                        else:
+                            integrityMessage = "No integrity violations detected"
+                        send_data(conn, integrityMessage)
+                    # otherwise the corruption is too extensive to identify
+                    except:
+                        send_data(conn, "Files have been corrupted")
+                # they they're irrecoverably damaged, reset the user's file & directories
+                except:
+                    filesystems.delete_one({"username": client_username})
+                    sys = FileSystem.FileSystem(client)
+                    sys.make_current_user(client_username)
+                    send_data(conn, "Your files have been corrupted, resetting")
             add_to_groups(sys)
             print(f"Logged in as {sys.user.name}, going to command server")
             # If the user is an admin, go to the admin command server
@@ -100,6 +147,7 @@ def server():
     # filesystems.delete_many({})
     # users.delete_many({})
     # groups.delete_many({})
+
     # Create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
@@ -235,6 +283,7 @@ def command_server(conn, sys, admin=False):
                     send_data(s=conn, data=sys.get_current_path())
                 else:
                     send_data(s=conn, data="Error: Invalid path provided")
+        # create a new directory at the current path
         elif data[0] == "mk":
             if (fullPrivilege == True) or (admin == True):
                 sys.create_component(str(data[1]), ComponentType.DIR)
@@ -248,22 +297,25 @@ def command_server(conn, sys, admin=False):
                 send_data(conn, f"{str(data[1])} deleted")
             else:
                 send_data(conn, "Insufficient privileges")
-        # read a file
+        # logout of the SFS
         elif data[0] == "lg":
             save_system(sys)
             return
+        # read a file
         elif data[0] == "rd":
             if (fullPrivilege == True) or (admin == True):
                 file = sys.get_component(str(data[1])).read()
                 send_data(conn, str(file))
             else:
                 send_data(conn, "Insufficient privileges")
+        # write/append to an existing file
         elif data[0] == "wr":
             if (fullPrivilege == True) or (admin == True):
                 sys.get_component(str(data[1][0])).write(data[1][1:])
                 send_data(conn, "File updated")
             else:
                 send_data(conn, "Insufficient privileges")
+        # rename an existing file
         elif data[0] == "rn":
             if (fullPrivilege == True) or (admin == True):
                 sys.get_component(str(data[1][0])).rename(data[1][1])
@@ -276,8 +328,10 @@ def command_server(conn, sys, admin=False):
                 send_data(conn, sys.list_components())
             else:
                 send_data(conn, sys.list_components_lp())
+        # show all of the groups the user has been assigned to
         elif data[0] == "shg":
             send_data(conn, sys.user.groups)
+        # show the current directory path
         elif data[0] == "pwd":
             if (fullPrivilege == True) or (admin == True):
                 send_data(s=conn, data=sys.get_current_path())

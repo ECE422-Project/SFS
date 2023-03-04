@@ -1,6 +1,7 @@
 from Component import Component
 from User import User
-
+from pyDes import *
+import hashlib
 
 class Directory(Component):
 
@@ -8,6 +9,8 @@ class Directory(Component):
         self.name = name
         self.owner = owner
         self.components = []
+        self.hash = ""
+        self.type = "Directory"
 
     def rename(self, new_name):
         self.name = new_name
