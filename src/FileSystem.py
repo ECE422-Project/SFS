@@ -45,6 +45,7 @@ class FileSystem:
             decryptedPath.append(triple_des('ECE422-SecurityProject01').decrypt(self.path[i], padmode=2).decode())
         return decryptedPath
     
+    # returns the still encrypted current directory path
     def get_current_path_lp(self):
         return self.path
 
@@ -82,12 +83,14 @@ class FileSystem:
             li.append(triple_des('ECE422-SecurityProject01').decrypt(component.name, padmode=2).decode())
         return li
     
+    # returns the still encrypted list of all files and directories
     def list_components_lp(self):
         li = []
         for component in self.get_pwd().get_files():
             li.append(component.name)
         return li
 
+    # creates a new file or directory
     def create_component(self, name, compType: ComponentType):
         # use encrypted form of the component name 
         name = triple_des('ECE422-SecurityProject01').encrypt(name, padmode=2)
@@ -107,6 +110,7 @@ class FileSystem:
             self.user.permissions[directory.name] = PermissionType.READWRITE
             return directory
 
+    # deletes a file or directory
     def remove_component(self, name):
         # use encrypted form of the component name 
         name = triple_des('ECE422-SecurityProject01').encrypt(name, padmode=2)
@@ -118,6 +122,7 @@ class FileSystem:
                     if name in file.name:
                         self.directory_list[directory].get_files().remove(file)
 
+    # retrives a file or directory
     def get_component(self, name):
         # use encrypted form of the component name 
         name = triple_des('ECE422-SecurityProject01').encrypt(name, padmode=2)
@@ -129,5 +134,6 @@ class FileSystem:
                     if name in file.name:
                         return file
 
+    # returns the list of all groups assigned to a user
     def get_groups(self):
         return self.user.groups
